@@ -1,0 +1,10 @@
+# 构建中间产物
+/build/
+/dist/
+*.log
+
+# 签名私钥（不要进仓库）
+/signing/*.keystore
+
+# 真机调试产物（截图 / logcat / dumpsys，体积大，只留本地）
+/k70_debug/

@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">牛马脱敏器</string>
+    <string name="widget_1x4_name">牛马脱敏器 1×4</string>
+    <string name="widget_2x4_name">牛马脱敏器 2×4</string>
+    <string name="widget_1x2_name">牛马脱敏器 1×2</string>
+    <string name="widget_2x2_name">牛马脱敏器 2×2</string>
+    <string name="widget_1x4_desc">今天已经赚了多少，一条就能看完</string>
+    <string name="widget_2x4_desc">状态、倒计时、进度、时薪，全都摆出来</string>
+    <string name="widget_1x2_desc">迷你条：状态、金额、进度，两格就够</string>
+    <string name="widget_2x2_desc">方卡：状态、金额、倒计时、进度与时薪</string>
+</resources>
