@@ -6,8 +6,16 @@ Windows 桌面悬浮窗项目 [feiyuaq/niuma](https://github.com/feiyuaq/niuma)�
 
 - 包名：`com.feiyuaq.niuma`
 - 支持：Android 5.0（API 21）～ Android 13（target 33）
-- 产物：`dist/NiuMaWidget-1.0.apk`（约 70 KB，已签名，签名证书在 `signing/niuma.keystore`）
 - 许可证：MIT，原项目版权归 [feiyuaq](https://github.com/feiyuaq)，全文见 `LICENSE`
+
+### 下载安装
+
+**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.0/NiuMaWidget-1.0.apk)**（71,153 B，约 69.5 KB）
+
+也可以在 [Releases 页面](https://github.com/q1449563834/niuma-android-widget/releases) 里取。下载后在手机上允许「安装未知来源应用」即可安装，
+装完长按桌面空白处 → 小部件 → 找到「牛马脱敏器」的四种尺寸放上去。首次打开 App 先设薪资与班制，小部件才会按你的班表计薪。
+
+> 仓库里不放二进制：`dist/` 与 `signing/` 都在 `.gitignore` 里，安装包只走 Release 资产。
 
 > 本仓库**不含签名私钥**：`build.ps1` 发现 `signing/niuma.keystore` 不存在时会用 `keytool` 自动生成一张
 > （storepass / keypass 都是 `android`）。因此克隆后第一次构建能直接出包；但如果你手机上装着的旧包是用
