@@ -9,6 +9,10 @@ Windows 桌面悬浮窗项目 [feiyuaq/niuma](https://github.com/feiyuaq/niuma)�
 - 产物：`dist/NiuMaWidget-1.0.apk`（约 70 KB，已签名，签名证书在 `signing/niuma.keystore`）
 - 许可证：MIT，原项目版权归 [feiyuaq](https://github.com/feiyuaq)，全文见 `LICENSE`
 
+> 本仓库**不含签名私钥**：`build.ps1` 发现 `signing/niuma.keystore` 不存在时会用 `keytool` 自动生成一张
+> （storepass / keypass 都是 `android`）。因此克隆后第一次构建能直接出包；但如果你手机上装着的旧包是用
+> 别的证书签的，覆盖安装会报 `INSTALL_FAILED_UPDATE_INCOMPATIBLE`，先卸载再装即可。
+
 > 这是原项目的**非官方移植版**，不修改原仓库，也不代表原作者立场；安卓端的小部件模型、班制配置、
 > 真机修复等均为本移植版新增。构建产物（`build/`、`dist/`）、签名私钥、真机调试截图都不进仓库，见 `.gitignore`。
 
