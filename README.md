@@ -384,3 +384,21 @@ isForeground=true foregroundId=1001 types=0x40000000
 - 装机后 `dumpsys appwidget` 四个 provider 都在，但**当前桌面上没有实例**（此前被清空），所以这一次没能截到桌面上的实机小部件——
   需要你在桌面重新放一块（设置页「添加…到桌面」按钮或长按桌面空白处），放上去就会立刻按新代码渲染并带上「明日」那行。
 
+
+
+---
+
+## 十一、仓库与本地开发
+
+- 远端：`git@github.com:q1449563834/niuma-android-widget.git`（HTTPS 走 `github.com` 在本机被重置，改成 SSH over 443）
+- 本机 SSH 配置在 `~/.ssh/config`：`Host github.com` → `HostName ssh.github.com` / `Port 443` / `IdentityFile ~/.ssh/id_ed25519`
+- 该公钥以 **部署密钥（可写）** 挂在仓库 Settings → Deploy keys，名字 `niuma-pc (Windows)`；不需要时可直接在网页删掉
+- 常用命令（Git 装在 `C:\Program Files\Git`）：
+
+```powershell
+git add -A
+git commit -m "说明这次改了什么"
+git push
+```
+
+安装包不进仓库，更新版本时走 Release：`git tag v1.0.1 && git push --tags`，再到 Releases 页面把 `dist/NiuMaWidget-1.0.apk` 传上去。
