@@ -39,7 +39,8 @@ Windows 桌面悬浮窗项目 [feiyuaq/niuma](https://github.com/feiyuaq/niuma)�
    拖到桌面松手即可。App 里也有「添加 1×2 迷你条 / 1×4 细条 / 2×2 方卡 / 2×4 完整卡到桌面」四个按钮（走系统的 `requestPinAppWidget`，
    启动器不支持时会自动弹出图文教程）。
 5. 想秒级跳动，把「秒级刷新」开关留着（默认开）。它靠一个 `IMPORTANCE_MIN` 的前台服务每秒重绘小部件，熄屏不画、不耗电；
-   关掉后改由系统广播驱动（打开 App 或每半小时刷新一次）。Android 13 首次启动会请求通知权限，不给也不影响计薪。
+   关掉后由 `AlarmManager` 挂着**每分钟一次**的闹钟重绘（第 12 章），这时数字一分钟跳一次、没有常驻通知。
+   Android 13 首次启动会请求通知权限，不给也不影响计薪。
 
 ---
 
@@ -153,6 +154,8 @@ NiuMaWidget/
 │   ├─ WidgetUpdater.java / NiumaWidgetBase.java
 │   ├─ NiumaWidget1x2.java / NiumaWidget1x4.java / NiumaWidget2x2.java / NiumaWidget2x4.java
 │   ├─ TickerService.java    # 秒级刷新前台服务
+│   ├─ RefreshScheduler.java / MinuteTickReceiver.java / BootReceiver.java
+│   │                        # 刷新调度（服务 or 分钟闹钟）、闹钟接收器、开机/时间变更拉起
 │   ├─ MainActivity.java / SegView.java / ProgressView.java / WidgetPreview.java / Ui.java
 ├─ src/main/res/xml/        # widget_1x2.xml / widget_1x4.xml / widget_2x2.xml / widget_2x4.xml（各尺寸的格子声明）
 ├─ tools/make_icons.py       # 纯标准库 Python 手写 PNG 图标（4× 超采样）
@@ -187,7 +190,8 @@ adb logcat -d -s NIUMA_CHECK
    `requestPinAppWidget` 也被这个启动器静默吞掉。所以小部件是用自建 `AppWidgetHost` 真绑定 `NiuMaWidget2x4` 验证的：
    连续两张截图间隔 8 秒，金额 289.10090 → 289.16195、倒计时同步减少，说明 `RemoteViews` + 秒级刷新链路是通的（`build/probe3.png`、`build/probe4.png`）。
    真机（MIUI / ColorOS / 原生 Android）走系统「添加小部件」或 App 内放置按钮都正常。
-2. 秒级刷新依赖前台服务；国产 ROM 需要给「后台常驻 / 自启动」白名单，否则熄屏久了服务会被杀，小部件退回半小时一刷。
+2. 秒级刷新依赖前台服务；国产 ROM 需要给「后台常驻 / 自启动」白名单，否则熄屏久了服务会被杀。被杀了也不会停更：
+   `RefreshScheduler` 会退回每分钟一次的闹钟；连闹钟都被 ROM 压掉时，还剩 `updatePeriodMillis=1800000` 的系统 30 分钟兜底。
 3. `1×2 / 1×4 / 2×2 / 2×4` 是按「2 或 4 列、1 或 2 行」的格子算的，实际高宽随启动器（是否允许 1 行、边距多少）略有出入，渲染是按逻辑尺寸等比缩放，不会变形。
 4. 原项目的 `beij.png`、`app.ico` 没有下载（`raw.githubusercontent.com` 直连被重置），图标是按「¥ + 进度条 + 暖纸底」重画的。
 
@@ -402,3 +406,63 @@ git push
 ```
 
 安装包不进仓库，更新版本时走 Release：`git tag v1.0.1 && git push --tags`，再到 Releases 页面把 `dist/NiuMaWidget-1.0.apk` 传上去。
+
+---
+
+## 十二、本轮两项改动（关秒级刷新后的分钟刷新 / 班表标出今天）
+
+### 12.1 关掉秒级刷新后为什么一格都不刷
+
+根因不是「刷新频率设定太小」，而是**根本没有调度器**：
+
+- 4 个 `widget_*.xml` 全是 `android:updatePeriodMillis="0"`，等于告诉系统「不要发周期性 `APPWIDGET_UPDATE`」，所以设置页那句「关掉秒级刷新后每半小时自动刷新一次」是空话；
+- `MainActivity` 里那个开关关掉时只调了 `TickerService.stop()`，秒针停了，也没有任何东西接替它；
+- 剩下的刷新来源只有：打开 App（`onResume`）、开机/覆盖安装（`BootReceiver`）、改设置、改系统时间。所以用户看到的「甚至更久」=「只有打开应用才刷一次」。
+
+顺带说明为什么不能直接靠 `updatePeriodMillis` 做分钟级：系统对该值有 **30 分钟下限**，写 `60000` 也会被钳到 `1800000`。分钟级只能自己挂闹钟。
+
+改法（新增 2 个类 + 改 6 处调用点）：
+
+| 位置 | 改动 |
+|---|---|
+| 新增 `RefreshScheduler` | 唯一入口 `ensure()`：先重画一次，再按设置分流——`ticker=true` 停闹钟拉前台服务，`ticker=false` 停服务挂分钟闹钟；桌面上没有小部件就两条都停 |
+| 新增 `MinuteTickReceiver` | 闹钟响 → `WidgetUpdater.updateAllOnce()` 重画四块 → 立刻 `armNext()` 续下一次；出错也续，避免一次异常后彻底停更 |
+| `AndroidManifest.xml` | 注册 `MinuteTickReceiver`（`exported=false`）；权限用 `USE_EXACT_ALARM`（Android 13+ 自动授予）+ `SCHEDULE_EXACT_ALARM`（仅 ≤32）；`BootReceiver` 增加 `TIME_SET` / `TIMEZONE_CHANGED` / `DATE_CHANGED` |
+| 4 个 `widget_*.xml` | `updatePeriodMillis` 从 `0` 改成 `1800000`——万一 ROM 杀掉我们的闹钟，系统 30 分钟一次还能兜底 |
+| `WidgetUpdater` | 拆出 `updateAllOnce()`：一次 `Engine.compute` 喂四个 provider（秒级刷新时每秒省 3 次重复计算）；`draw()` 统一发 RemoteViews |
+| `TickerService.ensure()` | 返回值改成 `boolean`：后台被拒（`ForegroundServiceStartNotAllowedException`）时返回 false，`RefreshScheduler` 收到就自动退回分钟闹钟，不会出现「设了秒级却一分不刷」 |
+| `NiumaWidgetBase` | `onUpdate` / `onEnabled` / `onDisabled` / `onDeleted` 全改走 `RefreshScheduler.ensure`（`onDisabled` 时它会把服务和闹钟一起停掉）；删掉 `ACTION_SCREEN_ON` 那段死代码（manifest 注册的 `AppWidgetProvider` 收不到这个受保护广播） |
+
+闹钟对齐到「整分钟 +300ms」，用 `setExactAndAllowWhileIdle`；拿不到精确闹钟授权时退 `setAndAllowWhileIdle`（亮屏时仍约一分钟一次，Doze 下并入维护窗口——那时小部件也看不见）。设置页底部会在没授权时写明这件事。
+
+### 12.2 真机验证证据（K70 / Android 16）
+
+全程 **`秒级刷新 = 关`**（`dumpsys activity services com.feiyuaq.niuma` 为空，前台服务没跑）：
+
+```
+I NiuMaTicker: 分钟刷新闹钟已挂上：精度=exact，下一次约 5788ms 后
+dumpsys alarm → RTC_WAKEUP #3: Alarm{… origWhen 1794482580300 … com.feiyuaq.niuma}
+              tag=*walarm*:com.feiyuaq.niuma.action.MINUTE_TICK
+80 秒后再查   → Alarm{… origWhen 1794482640300 …}      （+60000 ms，对象已换成下一次）
+Alarm Stats  → u0a277:com.feiyuaq.niuma +636ms running, 12 wakeups
+```
+
+桌面小部件（2×4，实例 id 1511，宿主 `com.miui.home`）两次截图间隔 65 秒，右上角时间 **19:35 → 19:36**，`ImageChops` 差异只落在那一格数字上——说明是真按分钟重画，不是只有打开应用才刷。
+
+### 12.3 班表格子里标出「今天」
+
+- `dayGrid()` 用 `Cycle.index(p, Calendar.getInstance())` 算出今天在循环里第几天，传给 `dayCell(index, plan, today)`；
+- 今天那格整格换成**琥珀色**（`0xFFF8DCB4`），D 号变成「D8 今天」并用胡萝卜色加粗；上班格仍是淡豆绿、休息格是浅灰，三种颜色一眼分开；
+- 摘要块多一行「今天 = D8 · 休息」（胡萝卜色），和格子里的标记互相印证；
+- 只出现在 APN / 自定义循环（长白班没有循环表）。
+
+**踩坑记录（你要的「上边线显示不全」）**：第一版用 `GradientDrawable.setStroke` 画 1.4dp 胡萝卜描边，真机截图逐像素量出来——左、右、下三边都在，**只有上边那条实线段没画出来**（该行是底色，只有两个圆角弧有像素）。改成「胡萝卜实色外框 + 内缩 2dp 的琥珀内层」两层嵌套后，同样现象：内层把外框上沿盖掉了（`setPadding` 只生效了左右下）。最后放弃边线，改成整格实色——没有边线就不会缺边。格高同时从 46dp 加到 54dp，三行字（D 号 / 班次 / 时间）不再挤在一起。
+
+截图留档：`k70_debug/grid1.png`（缺上边线的第一版）、`grid2.png`（套壳版）、`grid3.png`（最终实色版）、`home_a.png` / `home_b.png`（小部件 19:35→19:36）、`clock_a.png` / `clock_b.png`（同一处放大对照）。
+
+### 12.4 验证过什么、没验证什么
+
+- `build.ps1` 全链路通过，产物 `dist/NiuMaWidget-1.0.apk` 73.5 KB；`dumpsys appwidget` 里四个 provider 的 `updatePeriodMillis` 都是 1800000；
+- 关掉秒级刷新时分钟刷新链路真机跑通（上面那组证据）；
+- 今天高亮在自定义循环模式下真机截图确认（D8 是休息日，琥珀格 + 「D8 今天」）；APN 模式走同一个 `buildCycleConfig`，没再单独截图；
+- **没有覆盖到的**：熄屏/Doze 深度休眠下的表现（此时系统会把闹钟并进维护窗口，可能延后到十几分钟一次，但小部件那时看不见，醒来打开应用或到下一个整分钟会补上）；HyperOS 的「省电策略」如果把本应用设成「限制后台」，闹钟仍可能被压，这种情况需要在系统设置里给它「无限制」。

@@ -48,18 +48,21 @@ public class TickerService extends Service {
         }
     }
 
-    public static void ensure(Context c) {
+    /** @return 是否真的把服务拉起来了（后台被拒时返回 false，调用方好退回分钟闹钟） */
+    public static boolean ensure(Context c) {
         Prefs p = Prefs.load(c);
-        WidgetUpdater.updateAll(c);
-        if (!p.ticker || WidgetUpdater.countWidgets(c) == 0) return;
+        WidgetUpdater.updateAllOnce(c);
+        if (!p.ticker || WidgetUpdater.countWidgets(c) == 0) return true;
         try {
             Intent i = new Intent(c, TickerService.class);
             if (Build.VERSION.SDK_INT >= 26) c.startForegroundService(i);
             else c.startService(i);
+            return true;
         } catch (Throwable t) {
             // Android 12+ 在后台（比如系统 30 分钟一次的小部件广播里）是不允许拉前台服务的，
             // 这时把原因打出来，而不是静默失败让用户以为小部件坏了。
             android.util.Log.w("NiuMaTicker", "后台启动刷新服务被拒，等用户打开应用再恢复秒级刷新", t);
+            return false;
         }
     }
 

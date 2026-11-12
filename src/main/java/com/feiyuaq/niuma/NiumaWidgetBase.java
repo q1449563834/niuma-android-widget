@@ -21,8 +21,8 @@ public abstract class NiumaWidgetBase extends AppWidgetProvider {
 
     @Override
     public void onUpdate(Context context, AppWidgetManager awm, int[] appWidgetIds) {
-        WidgetUpdater.updateProvider(context, getClass(), cols(), rows());
-        TickerService.ensure(context);
+        // 刷新方式（秒级前台服务 / 每分钟闹钟）由 RefreshScheduler 统一决定，这里只负责重画
+        RefreshScheduler.ensure(context);
     }
 
     @Override
@@ -32,17 +32,18 @@ public abstract class NiumaWidgetBase extends AppWidgetProvider {
 
     @Override
     public void onEnabled(Context context) {
-        TickerService.ensure(context);
+        RefreshScheduler.ensure(context);
     }
 
     @Override
     public void onDisabled(Context context) {
-        TickerService.stop(context);
+        // 最后一块被移除：ensure 会同时停掉前台服务和分钟闹钟，不留后台
+        RefreshScheduler.ensure(context);
     }
 
     @Override
     public void onDeleted(Context context, int[] appWidgetIds) {
-        if (WidgetUpdater.countWidgets(context) == 0) TickerService.stop(context);
+        RefreshScheduler.ensure(context);
     }
 
     @Override
@@ -50,9 +51,8 @@ public abstract class NiumaWidgetBase extends AppWidgetProvider {
         super.onReceive(context, intent);
         if (Intent.ACTION_TIME_CHANGED.equals(intent.getAction())
                 || Intent.ACTION_TIMEZONE_CHANGED.equals(intent.getAction())
-                || Intent.ACTION_DATE_CHANGED.equals(intent.getAction())
-                || Intent.ACTION_SCREEN_ON.equals(intent.getAction())) {
-            WidgetUpdater.updateAll(context);
+                || Intent.ACTION_DATE_CHANGED.equals(intent.getAction())) {
+            RefreshScheduler.ensure(context);
         }
     }
 }

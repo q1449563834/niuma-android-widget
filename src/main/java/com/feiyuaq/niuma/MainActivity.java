@@ -82,7 +82,7 @@ public class MainActivity extends Activity {
         super.onCreate(savedInstanceState);
         p = Prefs.load(this);
         buildUi();
-        TickerService.ensure(this);
+        RefreshScheduler.ensure(this);
         askNotification();
     }
 
@@ -106,7 +106,7 @@ public class MainActivity extends Activity {
         running = true;
         ui.removeCallbacks(frame);
         ui.post(frame);
-        TickerService.ensure(this);
+        RefreshScheduler.ensure(this);
     }
 
     @Override
@@ -404,6 +404,9 @@ public class MainActivity extends Activity {
         LinearLayout sum = Ui.col(this);
         sum.addView(Ui.tv(this, n + " 天一个循环 · " + work + " 个班 · " + fmt(hours, 1) + " 小时 / 周期", 12, Ui.INK, true));
         sum.addView(Ui.tv(this, "点任意一格改班次；循环第 1 天 = " + p.anchor, 10, Ui.GRAY, false));
+        int todayIdx = Cycle.index(p, Calendar.getInstance());
+        sum.addView(Ui.tv(this, "今天 = D" + (todayIdx + 1) + " · "
+                + Engine.planText(Plan.parse(days[todayIdx])), 10, Ui.CARROT, true));
         Ui.margins(sum, this, 0, 2, 0, 10);
         card.addView(sum);
 
@@ -478,16 +481,18 @@ public class MainActivity extends Activity {
     private LinearLayout dayGrid(String[] days) {
         LinearLayout grid = Ui.col(this);
         int cols = 4;
+        // 今天落在循环第几天（0 起）——只在这张表里用另一种颜色标出来
+        int todayIdx = days.length == 0 ? -1 : Cycle.index(p, Calendar.getInstance());
         for (int i = 0; i < days.length; i += cols) {
             LinearLayout row = Ui.row(this);
             for (int j = 0; j < cols; j++) {
                 int idx = i + j;
                 View cell;
-                if (idx < days.length) cell = dayCell(idx, Plan.parse(days[idx]));
+                if (idx < days.length) cell = dayCell(idx, Plan.parse(days[idx]), idx == todayIdx);
                 else {
                     cell = new View(this);
                 }
-                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 46), 1f);
+                LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, Ui.dp(this, 54), 1f);
                 lp.rightMargin = Ui.dp(this, 5);
                 lp.bottomMargin = Ui.dp(this, 5);
                 cell.setLayoutParams(lp);
@@ -504,12 +509,18 @@ public class MainActivity extends Activity {
         return D.hm(plan.start) + "-明" + D.hm(plan.end);
     }
 
-    private View dayCell(final int index, Plan plan) {
+    /**
+     * 一个格子：上班 = 淡豆绿、休息 = 浅灰；今天那格整格换成琥珀色 + D 号变「D8 今天」。
+     * 试过用 1.4dp 描边和「外框套内层」两种画法，真机上边那几像素都会被裁掉（上边线缺一段），
+     * 所以改成整格实色区分——没有边线可缺，四种格子颜色一眼就能分开。
+     */
+    private View dayCell(final int index, Plan plan, boolean today) {
         LinearLayout l = Ui.col(this);
         l.setGravity(Gravity.CENTER);
         boolean work = plan.work;
-        l.setBackground(Ui.round(work ? 0xFFEFF0DF : 0x0F000000, 10, this));
-        TextView d = Ui.tv(this, "D" + (index + 1), 9, Ui.GRAY, false);
+        l.setBackground(Ui.round(today ? 0xFFF8DCB4 : (work ? 0xFFEFF0DF : 0x0F000000), 10, this));
+        TextView d = Ui.tv(this, "D" + (index + 1) + (today ? " 今天" : ""), 9,
+                today ? Ui.CARROT : Ui.GRAY, today);
         d.setGravity(Gravity.CENTER);
         l.addView(d);
         TextView lab = Ui.tv(this, plan.work ? plan.shortLabel() + (plan.work2 ? "·值" : "") : "休",
@@ -661,13 +672,19 @@ public class MainActivity extends Activity {
             public void onCheckedChanged(CompoundButton b, boolean v) {
                 p.ticker = v;
                 save();
-                if (v) TickerService.ensure(MainActivity.this);
-                else TickerService.stop(MainActivity.this);
+                // 两条路都由 RefreshScheduler 决定：开=前台服务每秒一帧，关=闹钟每分钟一次
+                RefreshScheduler.ensure(MainActivity.this);
+                refreshTexts();
             }
         });
         card.addView(lr);
         card.addView(Ui.tv(this, "已放置小部件：" + WidgetUpdater.countWidgets(this) + " 个。"
-                + "关掉秒级刷新后，桌面只在打开应用 / 每半小时自动刷新一次。", 10, Ui.GRAY, false));
+                + "关掉秒级刷新后，桌面改成每分钟刷新一次（系统会略微延后，熄屏时不刷，"
+                + "省电但数字一分钟跳一次）。", 10, Ui.GRAY, false));
+        if (!RefreshScheduler.canExact(
+                (android.app.AlarmManager) getSystemService(Context.ALARM_SERVICE)))
+            card.addView(Ui.tv(this, "当前没拿到「精确闹钟」授权，分钟刷新可能被系统推迟 1–3 分钟；"
+                    + "想更准可在系统设置里给本应用允许精确闹钟。", 10, Ui.GRAY, false));
         return card;
     }
 
@@ -1107,7 +1124,7 @@ public class MainActivity extends Activity {
                     if (awm != null && awm.getAppWidgetIds(cn).length > before) {
                         Toast.makeText(MainActivity.this, "已放到桌面", Toast.LENGTH_SHORT).show();
                         rebuild(false);
-                        TickerService.ensure(MainActivity.this);
+                        RefreshScheduler.ensure(MainActivity.this);
                     } else {
                         showAddHelp();
                     }

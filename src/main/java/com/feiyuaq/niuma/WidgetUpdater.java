@@ -25,24 +25,40 @@ public class WidgetUpdater {
         }
     };
 
+    /** 四个 provider 只算一次快照再分发：秒级刷新时每秒都在调，算 4 遍太浪费 */
+    public static void updateAllOnce(Context ctx) {
+        try {
+            Prefs p = Prefs.load(ctx);
+            Engine.Snapshot snap = Engine.compute(p, System.currentTimeMillis());
+            draw(ctx, NiumaWidget1x2.class, 2, 1, p, snap);
+            draw(ctx, NiumaWidget1x4.class, 4, 1, p, snap);
+            draw(ctx, NiumaWidget2x2.class, 2, 2, p, snap);
+            draw(ctx, NiumaWidget2x4.class, 4, 2, p, snap);
+        } catch (Exception e) {
+            android.util.Log.w("NiuMaWidget", "更新小部件失败", e);
+        }
+    }
+
     public static void updateAll(Context ctx) {
-        updateProvider(ctx, NiumaWidget1x2.class, 2, 1);
-        updateProvider(ctx, NiumaWidget1x4.class, 4, 1);
-        updateProvider(ctx, NiumaWidget2x2.class, 2, 2);
-        updateProvider(ctx, NiumaWidget2x4.class, 4, 2);
+        updateAllOnce(ctx);
     }
 
     public static void updateProvider(Context ctx, Class<?> cls, int cols, int rows) {
         try {
-            AppWidgetManager m = AppWidgetManager.getInstance(ctx);
-            int[] ids = m.getAppWidgetIds(new ComponentName(ctx, cls));
-            if (ids == null) return;
             Prefs p = Prefs.load(ctx);
             Engine.Snapshot snap = Engine.compute(p, System.currentTimeMillis());
-            for (int id : ids) updateOne(ctx, m, id, cols, rows, p, snap);
+            draw(ctx, cls, cols, rows, p, snap);
         } catch (Exception e) {
             android.util.Log.w("NiuMaWidget", "更新小部件失败", e);
         }
+    }
+
+    private static void draw(Context ctx, Class<?> cls, int cols, int rows,
+                             Prefs p, Engine.Snapshot snap) {
+        AppWidgetManager m = AppWidgetManager.getInstance(ctx);
+        int[] ids = m.getAppWidgetIds(new ComponentName(ctx, cls));
+        if (ids == null) return;
+        for (int id : ids) updateOne(ctx, m, id, cols, rows, p, snap);
     }
 
     public static void updateOne(Context ctx, AppWidgetManager m, int id, int cols, int rows,
