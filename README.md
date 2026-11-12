@@ -10,7 +10,7 @@ Windows 桌面悬浮窗项目 [feiyuaq/niuma](https://github.com/feiyuaq/niuma)�
 
 ### 下载安装
 
-**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.0/NiuMaWidget-1.0.apk)**（71,153 B，约 69.5 KB）
+**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.1/NiuMaWidget-1.0.apk)**（75,249 B，约 73.5 KB，v1.0.1：含第 12 章的分钟刷新修复与「今天」高亮）
 
 也可以在 [Releases 页面](https://github.com/q1449563834/niuma-android-widget/releases) 里取。下载后在手机上允许「安装未知来源应用」即可安装，
 装完长按桌面空白处 → 小部件 → 找到「牛马脱敏器」的四种尺寸放上去。首次打开 App 先设薪资与班制，小部件才会按你的班表计薪。
