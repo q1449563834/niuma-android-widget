@@ -19,10 +19,15 @@ public class Prefs {
     public static final int PAY_DAILY = 0, PAY_MONTHLY = 1, PAY_HOURLY = 2;
     public static final int MODE_FIXED = 0, MODE_THREE = 1, MODE_CYCLE = 2;
 
-    /** 三班倒：早 8h、中 8h、夜 8h、休 ×2，8 天一轮 */
-    public static final String THREE_CYCLE =
+    /** 三班倒旧默认：早×2 中×2 夜×2 休×2。只用于识别「老用户没改过排班」并迁移成新默认 */
+    public static final String THREE_CYCLE_OLD =
             "W,480,960,-1,-1|W,480,960,-1,-1|W,960,1440,-1,-1|W,960,1440,-1,-1"
             + "|W,0,480,-1,-1|W,0,480,-1,-1|R|R";
+
+    /** APN 默认 8 天循环：早 早 中 中 休 夜 夜 休（用户改三班时间后由 apnCycle() 按新时间重排） */
+    public static final String THREE_CYCLE =
+            "W,480,960,-1,-1|W,480,960,-1,-1|W,960,1440,-1,-1|W,960,1440,-1,-1"
+            + "|R|W,0,480,-1,-1|W,0,480,-1,-1|R";
 
     /** 用户描述的 16 天循环：白、白、休、白、休、中夜(16h)、休、休，重复两轮 */
     public static final String CYCLE16 =
@@ -120,6 +125,10 @@ public class Prefs {
         }
         if (p.anchor == null || p.anchor.length() < 10)
             p.anchor = D.key(Calendar.getInstance());
+        // APN 默认循环从「早×2 中×2 夜×2 休×2」换成「早×2 中×2 休 夜×2 休」之后，
+        // 老用户存下来的还是旧默认串。只在「一个班都没改过」（存的完全是旧默认）时才重排，
+        // 用户自己点过的排班一律不动。
+        if (p.mode == MODE_THREE && THREE_CYCLE_OLD.equals(p.threeCycle)) p.threeCycle = p.apnCycle();
         return p;
     }
 
@@ -212,12 +221,12 @@ public class Prefs {
         else customCycle = value;
     }
 
-    /** APN 三班倒：用三个班各自的上下班时间拼出 8 天循环（白×2、中×2、夜×2、休×2） */
+    /** APN 三班倒：用三个班各自的上下班时间拼出 8 天循环（早早中中休夜夜休） */
     public String apnCycle() {
         String d = shift(apnDayStart, apnDayEnd);
         String m = shift(apnMidStart, apnMidEnd);
         String n = shift(apnNightStart, apnNightEnd);
-        return d + "|" + d + "|" + m + "|" + m + "|" + n + "|" + n + "|R|R";
+        return d + "|" + d + "|" + m + "|" + m + "|R|" + n + "|" + n + "|R";
     }
 
     /** 一段班次的编码；下班时间早于上班时间视为跨零点（20:00–04:00） */

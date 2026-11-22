@@ -64,18 +64,26 @@ public class WidgetRenderer {
     public static void draw(Canvas canvas, int wPx, int hPx, int cols, int rows, Prefs p,
                             Engine.Snapshot s, float density) {
         int W = logW(cols), H = logH(rows);
-        float sc = Math.min(wPx / (W * density), hPx / (H * density));
-        if (sc < 0.45f) sc = 0.45f;
-
         Paint pa = new Paint(Paint.ANTI_ALIAS_FLAG);
 
         // 卡片底：暖纸色 + 1px 描边。
         // 必须完全不透明（alpha 255）：HyperOS / MIUI 上小部件是贴在壁纸上的，
         // 半透明会让卡片发灰、边缘透出壁纸，用户看到的就是「透明显示异常」。
+        // 2×2 单独画成正方形：桌面一格不是正方形（K70 上约 106dp×91dp），
+        // 2×2 的格子位是 212×182 这种扁矩形，卡片跟着铺满就会显得「不够正」。
+        // 这里按短边取正方形居中，两侧留透明（和淘宝淘金币 2×2 的观感一致）。
+        RectF card;
+        boolean squareCard = (cols == 2 && rows == 2);
+        if (squareCard) {
+            float side = Math.min(wPx, hPx);
+            float left = (wPx - side) / 2f, top = (hPx - side) / 2f;
+            card = new RectF(left + 0.6f, top + 0.6f, left + side - 0.6f, top + side - 0.6f);
+        } else {
+            card = new RectF(0.6f, 0.6f, wPx - 0.6f, hPx - 0.6f);
+        }
         pa.setColor(PAPER);
         pa.setAlpha(255);
-        RectF card = new RectF(0.6f, 0.6f, wPx - 0.6f, hPx - 0.6f);
-        float rad = Math.min(wPx, hPx) * 0.17f;
+        float rad = Math.min(card.width(), card.height()) * 0.17f;
         canvas.drawRoundRect(card, rad, rad, pa);
         pa.setAlpha(255);
         pa.setStyle(Paint.Style.STROKE);
@@ -84,8 +92,13 @@ public class WidgetRenderer {
         canvas.drawRoundRect(card, rad, rad, pa);
         pa.setStyle(Paint.Style.FILL);
 
+        // 内容按卡片区域等比缩放并居中（2×2 时就是按那个正方形来算，文字不会溢到透明区外）
+        float sc = Math.min(card.width() / (W * density), card.height() / (H * density));
+        if (sc < 0.45f) sc = 0.45f;
+
         canvas.save();
-        canvas.translate((wPx - W * density * sc) / 2f, (hPx - H * density * sc) / 2f);
+        canvas.translate(card.centerX() - W * density * sc / 2f,
+                card.centerY() - H * density * sc / 2f);
         canvas.scale(sc * density, sc * density);
         if (cols == 4 && rows == 1) draw1x4(canvas, p, s);
         else if (cols == 4) draw2x4(canvas, p, s);
