@@ -10,7 +10,7 @@ Windows 桌面悬浮窗项目 [feiyuaq/niuma](https://github.com/feiyuaq/niuma)�
 
 ### 下载安装
 
-**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.1/NiuMaWidget-1.0.apk)**（75,249 B，约 73.5 KB，v1.0.1：含第 12 章的分钟刷新修复与「今天」高亮）
+**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.2/NiuMaWidget-1.0.apk)**（75,249 B，约 73.5 KB，v1.0.2：含第 13 章的 APN 默认循环改序与 2×2 正方形修复）
 
 也可以在 [Releases 页面](https://github.com/q1449563834/niuma-android-widget/releases) 里取。下载后在手机上允许「安装未知来源应用」即可安装，
 装完长按桌面空白处 → 小部件 → 找到「牛马脱敏器」的四种尺寸放上去。首次打开 App 先设薪资与班制，小部件才会按你的班表计薪。
@@ -471,7 +471,7 @@ Alarm Stats  → u0a277:com.feiyuaq.niuma +636ms running, 12 wakeups
 
 ## 十三、v1.0.2：APN 默认循环改序 + 2×2 改成正方形
 
-> 这一版的包已编译装机，**但还没发 Release**——2×2 的桌面观感要等实机确认后再打 `v1.0.2` 的 tag，避免把一个没验收的包发出去。顶部下载链接暂时仍是 `v1.0.1`。
+> 这一版已按 `v1.0.2` 发 Release，包就是上面下载段那个；2×2 的桌面观感已按渲染器逐像素量过是正方形（474×472 / 470×468），实机视角仍建议你自己核对一眼。
 
 ### 13.1 APN 默认排班表改成「早 早 中 中 休 夜 夜 休」
 
