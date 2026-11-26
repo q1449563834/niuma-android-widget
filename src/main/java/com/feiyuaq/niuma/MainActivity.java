@@ -999,6 +999,9 @@ public class MainActivity extends Activity {
                 Calendar n = Calendar.getInstance();
                 n.set(y, m, d);
                 p.anchor = D.key(n);
+                // 选了「一轮以前」的日子也没关系：按整数周期前移到最近一轮的第一天，相位不变
+                // （注意这里要用「今天」做基准，不能拿刚选的 n，否则 diff 恒为 0）
+                Cycle.rollAnchor(p, Calendar.getInstance());
                 save();
                 rebuild(true);
             }
@@ -1164,6 +1167,7 @@ public class MainActivity extends Activity {
                         + "两段算同一天、同一个班次的钱，只是摊到更多计薪分钟上\n\n"
                         + "APN 模式下三个班的上下班时间都能改，改完按新时间重排 早×2、中×2、休、夜×2、休 的 8 天循环（早早中中休夜夜休）。\n"
                         + "「循环第 1 天」决定从哪天开始数，改完之后按你的第一轮第一天选一下即可。"
+                        + "跑完一整个周期后它会自动往前跳到最近一轮的第一天（只按整数周期前移，今天该上什么班不变）。"
                         + "不上的班就点成休息，休息日不计薪。")
                 .setPositiveButton("知道了", null).show();
     }

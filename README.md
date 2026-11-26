@@ -497,3 +497,41 @@ Alarm Stats  → u0a277:com.feiyuaq.niuma +636ms running, 12 wakeups
 - 截图 `k70_debug/probe2x2.png` 逐像素量卡片暖纸色（`#FBF7EA`）的包围盒：`474×472`（宽高比 1.004）和 `470×468`（1.004）——**都是正方形**；
 - 真机 APN 页截图 `k70_debug/app_apn.png`：班表已是 D1 早 / D2 早 / D3 中 / D4 中 / … / D8 今天·休，摘要「8 天一个循环 · 6 个班 · 48.0 小时」，和「早早中中休夜夜休」一致；
 - **没做到的**：K70 的 `adb shell input swipe/tap` 仍被 `SecurityException: INJECT_EVENTS` 挡住（设备没开「USB 调试（安全设置）」），`sendevent` 也被 SELinux 拒（shell 虽在 `input` 组但仍无写权限），所以**翻不到放 2×2 的那一页桌面**，桌面实机外观需要你自己看一眼；如果还想更贴近淘宝那种「内容再大一点、留白再少一点」，把正方形改成「按高度铺满 + 只削两侧」或者干脆给 2×2 XML 换个更方的格子比都还能再调。
+
+---
+
+## 十四、v1.0.3：循环跑过一轮后「循环第 1 天」自动前移
+
+原来的实现里 `p.anchor` 只在你第一次启动或手动「选循环起始日」时定一次，之后就一直停在那个日期。用了几个月之后，界面上那句「循环第 1 天 = 2026-01-05」会一直停在一月初，看着像没在走。新版改成：**只要过了整整一个周期，就把「循环第 1 天」前移到「今天所在的这一轮的第一天」**。
+
+### 14.1 怎么前移的
+
+新增 `Cycle.rollAnchor(Prefs p, Calendar today)`：
+
+```java
+long diff = D.daysBetween(D.parse(p.anchor), D.at(today, 0));
+if (diff < len) return false;          // 还没满一轮（或第 1 天设在未来）：不动
+long cycles = diff / len;              // 只前移「整数个周期」
+a.add(Calendar.DAY_OF_MONTH, (int) (cycles * len));
+p.anchor = D.key(a);
+```
+
+关键点是**只前移整数个周期**，所以 `Cycle.index()`（今天在循环里第几天，`diff % len`）完全不变——APN 的「早早中中休夜夜休」、自定义 16 天那套排班，今天该上什么班、该拿多少钱，一个字都不会变，变的只是那个日期的显示/存储值。
+
+生效点两处：
+
+| 位置 | 说明 |
+|---|---|
+| `Prefs.load()` | App、小部件、分钟闹钟每次取设置都会走这里，所以哪怕一个月没打开 App，桌面小部件在跨轮之后也会按新基准渲染 |
+| `MainActivity.pickDate()` | 手动「选循环起始日」选了个一轮以前的日子，确认后立刻前移到最近一轮；这里必须用 `Calendar.getInstance()` 当基准，不能拿刚选的日期（第一版写成 `rollAnchor(p, n)`，`diff` 恒为 0，等于没生效，真机上一次点才发现） |
+
+不动的三种情况：长白班（没有循环）、`diff < 周期长度`（还在第一轮里）、「循环第 1 天」本来就设在未来。
+
+### 14.2 验证
+
+- `tools/rolltest/RollAnchorTest.java`：用**真实类**（`Prefs` + `Cycle` + `D`，`javac -cp android.jar` 编译，JVM 上跑）覆盖 9 组——APN 8 天的 7 / 8 / 14 / 25 天、16 天循环的 5 / 32 / 56 天、`anchor` 在未来、长白班；每组都断言「前移后的 anchor 符合预期」且「前移前后 `Cycle.index` 相同」，**ALL PASS**；
+- 模拟器（API 28）端到端：APN 模式点「选循环起始日」选 2026-11-01 → 右边立刻显示 `循环第 1 天 = 2026-11-25`（25 天 = 3 轮整 + 1 天），「今天 = D2 · 早班」保持不变（`emu4.png` / `emu5.png`）；
+- 冷启动路径：把模拟器系统时间拨到 2026-12-26，`am force-stop` 后重启 App → 显示 `循环第 1 天 = 2026-12-19`、「今天 = D8 · 休息」（31 天 = 3 轮 + 7 天），相位依旧（`emu6.png`）；测完已把模拟器时间恢复自动同步；
+- **没验证到的**：K70 这次不在线（`adb devices` 只剩 `emulator-5554`），所以没在真机上装这一版；真机回来后再 `build.ps1 -Install -Device 89c91cbc` 复核即可。
+
+> 这一版同样**还没有发 Release**，等真机装过、你确认没问题再打 `v1.0.3`。顶部下载链接仍是 `v1.0.2`。

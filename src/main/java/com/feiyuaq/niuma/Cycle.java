@@ -33,6 +33,25 @@ public class Cycle {
         return i;
     }
 
+    /**
+     * 循环跑过一轮之后，把「循环第 1 天」（{@code p.anchor}）前移到「今天所在的这一轮的第一天」。
+     * 只前移整数个周期，今天在循环里的第几天不变，所以排班/计薪结果完全不受影响，
+     * 变的只是界面上那句「循环第 1 天 = …」的日期，不会永远停在几个月前的首次启动日。
+     */
+    public static boolean rollAnchor(Prefs p, Calendar today) {
+        if (p.mode == Prefs.MODE_FIXED) return false;       // 长白班没有循环
+        int len = days(p.cycleForMode()).length;
+        if (len <= 0) return false;
+        Calendar a = D.parse(p.anchor);
+        long diff = D.daysBetween(a, D.at(today, 0));
+        if (diff < len) return false;                        // 还在第一轮里，或「循环第 1 天」本来就在未来
+        long cycles = diff / len;
+        if (cycles <= 0 || cycles * len > 100000L) return false;
+        a.add(Calendar.DAY_OF_MONTH, (int) (cycles * len));
+        p.anchor = D.key(a);
+        return true;
+    }
+
     public static String dayAt(Prefs p, int index) {
         String[] days = days(p.cycleForMode());
         if (days.length == 0) return "R";

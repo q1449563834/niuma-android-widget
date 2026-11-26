@@ -129,6 +129,8 @@ public class Prefs {
         // 老用户存下来的还是旧默认串。只在「一个班都没改过」（存的完全是旧默认）时才重排，
         // 用户自己点过的排班一律不动。
         if (p.mode == MODE_THREE && THREE_CYCLE_OLD.equals(p.threeCycle)) p.threeCycle = p.apnCycle();
+        // 循环已经跑过一轮：把「循环第 1 天」前移到最近一轮的第一天（相位不变，见 Cycle.rollAnchor）
+        Cycle.rollAnchor(p, Calendar.getInstance());
         return p;
     }
 
