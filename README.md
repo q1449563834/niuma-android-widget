@@ -10,7 +10,7 @@ Windows 桌面悬浮窗项目 [feiyuaq/niuma](https://github.com/feiyuaq/niuma)�
 
 ### 下载安装
 
-**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.2/NiuMaWidget-1.0.apk)**（75,249 B，约 73.5 KB，v1.0.2：含第 13 章的 APN 默认循环改序与 2×2 正方形修复）
+**[⬇ NiuMaWidget-1.0.apk](https://github.com/q1449563834/niuma-android-widget/releases/download/v1.0.3/NiuMaWidget-1.0.apk)**（75,249 B，约 73.5 KB，v1.0.3：含第 14 章的「循环第 1 天」自动前移）
 
 也可以在 [Releases 页面](https://github.com/q1449563834/niuma-android-widget/releases) 里取。下载后在手机上允许「安装未知来源应用」即可安装，
 装完长按桌面空白处 → 小部件 → 找到「牛马脱敏器」的四种尺寸放上去。首次打开 App 先设薪资与班制，小部件才会按你的班表计薪。
@@ -534,4 +534,4 @@ p.anchor = D.key(a);
 - 冷启动路径：把模拟器系统时间拨到 2026-12-26，`am force-stop` 后重启 App → 显示 `循环第 1 天 = 2026-12-19`、「今天 = D8 · 休息」（31 天 = 3 轮 + 7 天），相位依旧（`emu6.png`）；测完已把模拟器时间恢复自动同步；
 - **没验证到的**：K70 这次不在线（`adb devices` 只剩 `emulator-5554`），所以没在真机上装这一版；真机回来后再 `build.ps1 -Install -Device 89c91cbc` 复核即可。
 
-> 这一版同样**还没有发 Release**，等真机装过、你确认没问题再打 `v1.0.3`。顶部下载链接仍是 `v1.0.2`。
+> 这一版已按 `v1.0.3` 发 Release，包就是上面下载段那个。K70 当时不在线没能在真机上复核，模拟器（API 28）两条路径都验过；真机如果发现日期不对，把当时截图给我即可。
